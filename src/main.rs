@@ -1,5 +1,3 @@
-
-
 use futures::StreamExt;
 use telegram_bot::*;
 
@@ -15,15 +13,7 @@ async fn main() -> Result<(), Error> {
         let update = update?;
         if let UpdateKind::Message(message) = update.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
-                // Print received text message to stdout.
                 println!("<{}>: {}", &message.from.first_name, data);
-
-                // Answer message with "Hi".
-                api.send(message.text_reply(format!(
-                    "Hi, {}! You just wrote '{}'",
-                    &message.from.first_name, data
-                )))
-                    .await?;
             }
         }
     }
