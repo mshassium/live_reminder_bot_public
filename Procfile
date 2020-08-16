@@ -1,1 +1,1 @@
-worker: sh target/debug/live_reminder_bot_server
+worker: sh ./target/debug/live_reminder_bot_server
