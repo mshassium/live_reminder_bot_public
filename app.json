@@ -1,0 +1,11 @@
+{
+  "name": "Importance Word Reminder",
+  "description": "",
+  "repository": "https://github.com/mshassium/live_reminder_bot",
+  "success_url": "/",
+  "keywords": ["rust"],
+  "website": "https://github.com/mshassium/live_reminder_bot",
+  "env": {
+    "BUILDPACK_URL": "https://github.com/emk/heroku-buildpack-rust.git"
+  }
+}
