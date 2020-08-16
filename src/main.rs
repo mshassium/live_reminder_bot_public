@@ -135,8 +135,13 @@ async fn clear_words(user: &User, collection: &Collection) -> Result<Array, Erro
 
 async fn random_reminder(user: &User, collection: &Collection) -> Result<Bson, Error> {
     let vec: Vec<Bson> = load_words(&user.id, collection).await.unwrap();
-    let mut rng = rand::thread_rng();
-    let option = vec.choose(&mut rng).unwrap().clone();
-    println!("[DEBUG]------> For user {:?} choose word {:?}", user.id.to_string(), option);
-    Ok(option)
+    if vec.len() > 0 {
+        let mut rng = rand::thread_rng();
+        let option = vec.choose(&mut rng).unwrap().clone();
+        println!("[DEBUG]------> For user {:?} choose word {:?}", user.id.to_string(), option);
+        Ok(option)
+    } else {
+        println!("[DEBUG]------> Empty list");
+        Ok(bson::to_bson("Empty list").unwrap())
+    }
 }
