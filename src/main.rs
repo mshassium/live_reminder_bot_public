@@ -11,6 +11,7 @@ const COMMAND_LIST: &str = "/list \n/help \n/random \n/clear \n/new <word> ";
 
 #[tokio::main]
 async fn main() -> Result<(), telegram_bot::Error> {
+    eprintln!("TEST ERROR CHECK!!!");
     let collection = connect_to_db().await.unwrap();
     let token = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
     let api = Api::new(token);
