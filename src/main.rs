@@ -1,13 +1,13 @@
-use futures::{StreamExt, TryFutureExt};
+use futures::{StreamExt};
 use telegram_bot::*;
-use mongodb::{sync::Client, sync::Collection, options::ClientOptions, bson::{doc, Bson, Array}, bson};
+use mongodb::{sync::Client, sync::Collection,  bson::{doc, Bson, Array}, bson};
 use mongodb::error::Error;
 use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions};
 use core::fmt;
 use std::fmt::Formatter;
 use rand::seq::SliceRandom;
 use async_await::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 use job_scheduler::{JobScheduler, Job};
 
 
@@ -32,7 +32,7 @@ fn reminder_logic() {
         let collection = connect_to_db().unwrap();
         let api = Api::new(BOT_TOKEN);
         sched.add(Job::new("* 1 9,21 * * *".parse().unwrap(), move || {
-            rt.block_on(send_reminders(&api, &collection));
+            let _block = rt.block_on(send_reminders(&api, &collection));
         }));
         loop {
             sched.tick();
@@ -93,9 +93,6 @@ async fn message_logic() -> Result<(), Error> {
     Ok(())
 }
 
-async fn test_async_func() {
-    println!("I AM TEST ASYNC FUNC");
-}
 
 fn connect_to_db() -> Result<Collection, Error> {
     println!("[DEBUG]------> DB Connection Start");
