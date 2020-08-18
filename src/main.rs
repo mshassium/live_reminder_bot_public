@@ -36,7 +36,6 @@ fn reminder_logic() {
         }));
         loop {
             sched.tick();
-            thread::sleep(Duration::from_secs(1800));
         }
     });
 }
