@@ -67,7 +67,7 @@ async fn message_logic() -> Result<(), Error> {
                         "/list" => {
                             let word_arr = load_words(&message.from.id.to_string(), &collection).unwrap();
                             let user_word_arr = WordsUserFriendly::new(&word_arr);
-                            api.send(chat.text(format!("You list: {}", user_word_arr))).await.unwrap();
+                            api.send(chat.text(format!("Your list: {}", user_word_arr))).await.unwrap();
                         }
                         "/help" => {
                             api.send(chat.text(COMMAND_LIST)).await.unwrap();
@@ -81,7 +81,7 @@ async fn message_logic() -> Result<(), Error> {
                         }
                         "/clear" => {
                             let words = WordsUserFriendly::new(&clear_words(&message.from.id.to_string(), &collection).unwrap());
-                            api.send(chat.text(format!("Done! \nYou list:  {}", words))).await.unwrap();
+                            api.send(chat.text(format!("Done! \nYour list:  {}", words))).await.unwrap();
                         }
                         _ => {
                             api.send(chat.text(format!("Please send correct command from list: \n{}", COMMAND_LIST))).await.unwrap();
