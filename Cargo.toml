@@ -10,5 +10,12 @@ edition = "2018"
 telegram-bot = "0.7.0"
 tokio = { version = "0.2", features = ["macros","fs"]}
 futures = "0.3.5"
-mongodb = "1.1.0-beta"
+#mongodb = "1.1.0-beta"
 rand = "0.7.3"
+job_scheduler = "1.2.1"
+async-await = "0.2.1"
+cpu-time = "1.0.0"
+[dependencies.mongodb]
+version = "1.0.0"
+default-features = false
+features = ["sync"]
