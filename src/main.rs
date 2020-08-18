@@ -35,9 +35,8 @@ fn reminder_logic() {
             rt.block_on(send_reminders(&api, &collection));
         }));
         loop {
-            println!("[DEBUG]------> INTO Reminder loop");
             sched.tick();
-            thread::sleep(Duration::from_millis(10000));
+            thread::sleep(Duration::from_secs(1800));
         }
     });
 }
