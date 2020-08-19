@@ -31,7 +31,7 @@ fn reminder_logic() {
         let mut sched = JobScheduler::new();
         let collection = connect_to_db().unwrap();
         let api = Api::new(BOT_TOKEN);
-        sched.add(Job::new("* 1 9,21 * * *".parse().unwrap(), move || {
+        sched.add(Job::new("0 1 5,17 * * *".parse().unwrap(), move || {
             let _block = rt.block_on(send_reminders(&api, &collection));
         }));
         loop {
