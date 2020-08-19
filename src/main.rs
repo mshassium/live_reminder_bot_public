@@ -12,7 +12,8 @@ use job_scheduler::{JobScheduler, Job};
 
 
 const COMMAND_LIST: &str = "/list \n/help \n/random \n/clear \n/new <word> ";
-const BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
+const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
+const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
 
 #[tokio::main]
 async fn main() -> Result<(), telegram_bot::Error> {
@@ -30,7 +31,7 @@ fn reminder_logic() {
         let mut rt = tokio::runtime::Runtime::new().unwrap();
         let mut sched = JobScheduler::new();
         let collection = connect_to_db().unwrap();
-        let api = Api::new(BOT_TOKEN);
+        let api = Api::new(TEST_BOT_TOKEN);
         sched.add(Job::new("0 1 5,17 * * *".parse().unwrap(), move || {
             let _block = rt.block_on(send_reminders(&api, &collection));
         }));
@@ -43,7 +44,7 @@ fn reminder_logic() {
 async fn message_logic() -> Result<(), Error> {
     println!("[DEBUG]------> INTO Message Logic Thread");
     let collection = connect_to_db().unwrap();
-    let api = Api::new(BOT_TOKEN);
+    let api = Api::new(TEST_BOT_TOKEN);
     // Fetch new updates via long poll method
     let mut stream = api.stream();
     println!("[DEBUG]------> Waiting Message...");
