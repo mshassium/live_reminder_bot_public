@@ -59,7 +59,7 @@ async fn message_logic() -> Result<(), Error> {
                     println!("[DEBUG]------> clear_word_string: {}", clear_word_string);
                     let new_word_list = save_word(&message.from, clear_word_string, &collection).unwrap();
                     let new_words_arr = WordsUserFriendly::new(new_word_list.as_document().unwrap().get_array("words").unwrap());
-                    api.send(chat.text(format!("I save you word:) \nYou new word list: {} ", new_words_arr))).await.unwrap();
+                    api.send(chat.text(format!("I save your word:) \nYour new word list: {} ", new_words_arr))).await.unwrap();
                 } else {
                     match data.as_str() {
                         "/list" => {
