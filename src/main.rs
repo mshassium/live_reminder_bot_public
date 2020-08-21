@@ -39,7 +39,7 @@ async fn main() -> Result<(), telegram_bot::Error> {
 }
 
 fn init_api() -> Api {
-    Api::new(TEST_BOT_TOKEN)
+    Api::new(RELEASE_BOT_TOKEN)
 }
 
 fn reminder_logic() {
