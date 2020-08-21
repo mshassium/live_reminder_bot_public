@@ -813,7 +813,7 @@ checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "live_reminder_bot_server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-await",
  "cpu-time",
