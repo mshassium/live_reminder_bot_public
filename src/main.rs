@@ -1,4 +1,3 @@
-#![feature(const_fn)]
 
 use futures::{StreamExt};
 use telegram_bot::*;
@@ -8,12 +7,9 @@ use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions};
 use core::fmt;
 use std::fmt::Formatter;
 use rand::seq::SliceRandom;
-use async_await::{thread, collect};
-use std::time::{Duration};
+use async_await::{thread};
 use job_scheduler::{JobScheduler, Job};
 
-
-const COMMAND_LIST: &str = "/list \n/help \n/random \n/clear \n/new <word> ";
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
 const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
 const HELP_PLACEHOLDER: &str = "\
@@ -89,8 +85,8 @@ Here's what we plan to do in the near future:
             ",env!("CARGO_PKG_VERSION"));
             let res = api.send(chat.text(hello_notification)).await;
             match res {
-                Ok(r) => {}
-                Err(e) => { println!("[DEBUG]------> ERROR ------> we can not send notification for user: {}", user_id) }
+                Ok(_r) => {}
+                Err(e) => { println!("[DEBUG]------> ERROR ------> we can not send notification for user: {} because: {}", user_id, e) }
             }
         }
     }
