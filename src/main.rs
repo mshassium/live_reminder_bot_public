@@ -16,7 +16,7 @@ const HELP_PLACEHOLDER: &str = "\
 Hello my friend ✌
 This bot help you for enjoy your life and don't forget about the most important ☺️
 You can:
-🍏 Add new importance phrase for your list (/new <word>)
+🍏 Add new importance phrase for your list (/new <long or short phrase>)
 🍏 Get list your phrase (/list)
 🍏 Get random phrase from list (/random)
 🍏 Clear list (/clear)
@@ -30,7 +30,7 @@ async fn main() -> Result<(), telegram_bot::Error> {
     println!("[DEBUG]------> Application Started");
     let db_connection: Collection = connect_to_db();
     let api: Api = init_api();
-    send_hello_notification(true, &api, &db_connection).await;
+    send_hello_notification(false, &api, &db_connection).await;
     reminder_logic();
     println!("[DEBUG]------> Reminder Logic Initialized");
     message_logic(&api, &db_connection).await.unwrap();
