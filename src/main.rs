@@ -17,13 +17,13 @@ const COMMAND_LIST: &str = "/list \n/help \n/random \n/clear \n/new <word> ";
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
 const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
 const HELP_PLACEHOLDER: &str = "\
-Hello, my friend ✌
-This bot help you for enjoy your life ☺️
+Hello my friend ✌
+This bot help you for enjoy your life and don't forget about the most important ☺️
 You can:
-🍏 Add new Importance word for your list (/new <word>)
-🍏 Get list your importance words (/list)
-🍏 Get random word from your list (/random)
-🍏 Clear your list (/clear)
+🍏 Add new importance phrase for your list (/new <word>)
+🍏 Get list your phrase (/list)
+🍏 Get random phrase from list (/random)
+🍏 Clear list (/clear)
 🍏 Show help message (/help)
 ❗️❗️❗️If you want send me any feedback please feel free (@rail_khamitov)
 ";
@@ -76,16 +76,15 @@ We have some updates for you ☺️
 Current bot version: {}
 
 Release Notes:
-🍏 Added this notification message
+🍏 Added this notification message (it will inform you about our changes)
 🍏 Added clear and useful description and help block for bot (try /help)
 
-We are trying to develop this bot for you.
 Here's what we plan to do in the near future:
 🍎 Fix Timezone problem (Now all reminder send only for +04:00 Timezone)
-🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00AM/PM )
-🍎 Add availability to remove concrete word
-🍎 Edit mode for concrete word
-🍎 Add support image/sticker/video for your word list
+🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00 AM/PM )
+🍎 Add availability to remove concrete phrase
+🍎 Add the ability to edit a specific phrase
+🍎 Add support image/sticker/video for your list
 
             ",env!("CARGO_PKG_VERSION"));
             let res = api.send(chat.text(hello_notification)).await;
