@@ -38,26 +38,6 @@ async fn main() -> Result<(), telegram_bot::Error> {
     Ok(())
 }
 
-fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
-}
-
-fn reminder_logic() {
-    thread::spawn(|| {
-        let collection: Collection = connect_to_db();
-        let api: Api = init_api();
-        println!("[DEBUG]------> INTO Reminder Thread");
-        let mut rt = tokio::runtime::Runtime::new().unwrap();
-        let mut sched = JobScheduler::new();
-        sched.add(Job::new("0 1 5,17 * * *".parse().unwrap(), move || {
-            let _block = rt.block_on(send_reminders(&api, &collection));
-        }));
-        loop {
-            sched.tick();
-        }
-    });
-}
-
 async fn send_hello_notification(send: bool, api: &Api, collection: &Collection) {
     println!("[DEBUG]------> Into send_hello_notification method");
     if send {
@@ -90,6 +70,20 @@ Here's what we plan to do in the near future:
             }
         }
     }
+}
+
+async fn send_reminders(api: &Api, collection: &Collection) -> Result<(), Error> {
+    println!("[DEBUG]------> In to send_reminder function");
+    let mut opt = FindOptions::default();
+    opt.projection = Some(doc! {"user_id":true});
+    let user_ids: Vec<String> = get_user_ids(collection);
+    for user_id in user_ids {
+        let chat = ChatId::new(user_id.parse::<i64>().unwrap());
+        println!("[DEBUG]------> For user_id {} send reminder", user_id);
+        let word: String = random_reminder(user_id, collection).unwrap().to_string();
+        api.send(chat.text(word)).await.unwrap();
+    }
+    Ok(())
 }
 
 async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> {
@@ -152,6 +146,26 @@ fn connect_to_db() -> Collection {
     collection
 }
 
+fn init_api() -> Api {
+    Api::new(RELEASE_BOT_TOKEN)
+}
+
+fn reminder_logic() {
+    thread::spawn(|| {
+        let collection: Collection = connect_to_db();
+        let api: Api = init_api();
+        println!("[DEBUG]------> INTO Reminder Thread");
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        let mut sched = JobScheduler::new();
+        sched.add(Job::new("0 1 5,17 * * *".parse().unwrap(), move || {
+            let _block = rt.block_on(send_reminders(&api, &collection));
+        }));
+        loop {
+            sched.tick();
+        }
+    });
+}
+
 fn load_words(user_id: &String, collection: &Collection) -> Result<Array, Error> {
     let mut cursor = collection.find(doc! {"user_id":user_id}, None).unwrap();
     let mut res_arr: Array = vec![];
@@ -184,29 +198,6 @@ fn save_word(user: &User, new_word: &str, collection: &Collection) -> Result<Bso
     Ok(bson::to_bson(&res).unwrap())
 }
 
-struct WordsUserFriendly {
-    words: Vec<Bson>
-}
-
-impl WordsUserFriendly {
-    fn new(arr: &Array) -> WordsUserFriendly {
-        WordsUserFriendly {
-            words: arr.clone()
-        }
-    }
-}
-
-impl fmt::Display for WordsUserFriendly {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "\n--------------------------\n")?;
-        for v in &self.words {
-            write!(f, "{}", v)?;
-            write!(f, "\n")?;
-        }
-        write!(f, "--------------------------")
-    }
-}
-
 fn clear_words(user_id: &String, collection: &Collection) -> Result<Array, Error> {
     println!("[DEBUG]------> clear words for : {}", user_id);
     collection.find_one_and_delete(doc! {"user_id":user_id}, None).unwrap();
@@ -224,20 +215,6 @@ fn random_reminder(user_id: String, collection: &Collection) -> Result<Bson, Err
         println!("[DEBUG]------> Empty list");
         Ok(bson::to_bson("Empty list").unwrap())
     }
-}
-
-async fn send_reminders(api: &Api, collection: &Collection) -> Result<(), Error> {
-    println!("[DEBUG]------> In to send_reminder function");
-    let mut opt = FindOptions::default();
-    opt.projection = Some(doc! {"user_id":true});
-    let user_ids: Vec<String> = get_user_ids(collection);
-    for user_id in user_ids {
-        let chat = ChatId::new(user_id.parse::<i64>().unwrap());
-        println!("[DEBUG]------> For user_id {} send reminder", user_id);
-        let word: String = random_reminder(user_id, collection).unwrap().to_string();
-        api.send(chat.text(word)).await.unwrap();
-    }
-    Ok(())
 }
 
 fn get_user_ids(collection: &Collection) -> Vec<String> {
@@ -259,4 +236,27 @@ fn get_user_ids(collection: &Collection) -> Vec<String> {
         .collect::<Vec<String>>();
     println!("[DEBUG]------> user_ids_ size: {}", user_ids.len());
     user_ids
+}
+
+struct WordsUserFriendly {
+    words: Vec<Bson>
+}
+
+impl WordsUserFriendly {
+    fn new(arr: &Array) -> WordsUserFriendly {
+        WordsUserFriendly {
+            words: arr.clone()
+        }
+    }
+}
+
+impl fmt::Display for WordsUserFriendly {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "\n--------------------------\n")?;
+        for v in &self.words {
+            write!(f, "{}", v)?;
+            write!(f, "\n")?;
+        }
+        write!(f, "--------------------------")
+    }
 }
