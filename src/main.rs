@@ -35,7 +35,7 @@ async fn main() -> Result<(), telegram_bot::Error> {
     println!("[DEBUG]------> Application Started");
     let db_connection: Collection = connect_to_db();
     let api: Api = init_api();
-    send_hello_notification(false, &api, &db_connection).await;
+    send_hello_notification(true, &api, &db_connection).await;
     reminder_logic();
     println!("[DEBUG]------> Reminder Logic Initialized");
     message_logic(&api, &db_connection).await.unwrap();
