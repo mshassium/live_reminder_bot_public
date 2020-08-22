@@ -183,7 +183,7 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(TEST_BOT_TOKEN)
+    Api::new(RELEASE_BOT_TOKEN)
 }
 
 fn reminder_logic() {
