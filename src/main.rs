@@ -1,4 +1,3 @@
-
 use futures::{StreamExt};
 use telegram_bot::*;
 use mongodb::{sync::Client, sync::Collection, bson::{doc, Bson, Array}, bson};
@@ -9,9 +8,12 @@ use std::fmt::Formatter;
 use rand::seq::SliceRandom;
 use async_await::{thread};
 use job_scheduler::{JobScheduler, Job};
+use serde::{Deserialize, Serialize};
+
 
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
 const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
+const TZ_API_KEY: &str = "PRG4062PTQJU";
 const HELP_PLACEHOLDER: &str = "\
 Hello my friend ✌
 This bot help you for enjoy your life and don't forget about the most important ☺️
@@ -52,17 +54,15 @@ We have some updates for you ☺️
 Current bot version: {}
 
 Release Notes:
-🍏 Added this notification message (it will inform you about our changes)
-🍏 Added clear and useful description and help block for bot (try /help)
+🍏 Fix Timezone problem (Now all reminder send only for +04:00 Timezone)
 
 Here's what we plan to do in the near future:
-🍎 Fix Timezone problem (Now all reminder send only for +04:00 Timezone)
 🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00 AM/PM )
 🍎 Add availability to remove concrete phrase
 🍎 Add the ability to edit a specific phrase
 🍎 Add support image/sticker/video for your list
 
-            ",env!("CARGO_PKG_VERSION"));
+            ", env!("CARGO_PKG_VERSION"));
             let res = api.send(chat.text(hello_notification)).await;
             match res {
                 Ok(_r) => {}
@@ -125,11 +125,37 @@ async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> 
                             let words = WordsUserFriendly::new(&clear_words(&message.from.id.to_string(), collection).unwrap());
                             api.send(chat.text(format!("Done! \nYour list:  {}", words))).await.unwrap();
                         }
+                        "/location" => {
+                            api.send(chat.text("Okay, please send me you location. If you are worried about the security of your address, you can send any other location close to you. We only need this information to determine your time zone")).await.unwrap();
+                        }
                         _ => {
                             api.send(chat.text(format!("Please send correct command from list: \n{}", HELP_PLACEHOLDER))).await.unwrap();
                         }
                     }
                 }
+            } else if
+            let MessageKind::Location { data } = message.kind {
+                println!("[DEBUG]------> user {} send location lat: {}, long: {} ", message.from.id, data.latitude, data.longitude);
+                let get_timezone_url: String = format!("http://api.timezonedb.com/v2.1/get-time-zone?key=PRG4062PTQJU&format=json&by=position&lat={}&lng={}", data.latitude, data.longitude);
+                let get_timezone_res = reqwest::get(&get_timezone_url)
+                    .await.unwrap()
+                    .text()
+                    .await.unwrap();
+                println!("[DEBUG]------> Location data res: {}", get_timezone_res);
+                let time_zone_raw_data: TimeZoneRawData = serde_json::from_str(get_timezone_res.as_str()).unwrap();
+                save_location(&message.from, time_zone_raw_data.zone_name.as_str(), &collection);
+                api.send(message.chat.text(format!("Thank you.☺️ \nWe are saved timezone data {}. \nNow you can configure required schedule for reminders", time_zone_raw_data.zone_name))).await.unwrap();
+                // println!("[DEBUG]------> Parsed data {}", time_zone_raw_data.zone_name);
+                // let local_timezone = "UTC";
+                // let convert_timezone_url: String = format!("http://api.timezonedb.com/v2.1/convert-time-zone?key=PRG4062PTQJU&format=json&from={}&to={}&time={}",
+                //                                            time_zone_raw_data.zone_name,
+                //                                            local_timezone,
+                //                                            time_zone_raw_data.timestamp);
+                // let convert_time_res: String = reqwest::get(&convert_timezone_url)
+                //     .await.unwrap()
+                //     .text()
+                //     .await.unwrap();
+                // println!("[DEBUG]------> Convert timezone data res: {}", convert_time_res);
             }
         }
     }
@@ -147,7 +173,7 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
+    Api::new(TEST_BOT_TOKEN)
 }
 
 fn reminder_logic() {
@@ -192,6 +218,20 @@ fn save_word(user: &User, new_word: &str, collection: &Collection) -> Result<Bso
     let res = collection.find_one_and_update(
         doc! {"user_id":user.id.to_string()},
         doc! {"$push":{"words":{"$each":[new_word]}}, "$set":{"name":user.first_name.as_str()}},
+        options,
+    ).unwrap();
+    println!("[DEBUG]------> Save operation result: {:?}", res);
+    Ok(bson::to_bson(&res).unwrap())
+}
+
+fn save_location(user: &User, timezone: &str, collection: &Collection) -> Result<Bson, Error> {
+    println!("[DEBUG]------> Start save location");
+    let mut options = FindOneAndUpdateOptions::default();
+    options.upsert = Some(true);
+    options.return_document = Some(ReturnDocument::After);
+    let res = collection.find_one_and_update(
+        doc! {"user_id":user.id.to_string()},
+        doc! {"$set":{"timezone":timezone}},
         options,
     ).unwrap();
     println!("[DEBUG]------> Save operation result: {:?}", res);
@@ -259,4 +299,31 @@ impl fmt::Display for WordsUserFriendly {
         }
         write!(f, "--------------------------")
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct TimeZoneRawData {
+    status: String,
+    message: String,
+    #[serde(rename = "countryCode")]
+    country_code: String,
+    #[serde(rename = "countryName")]
+    country_name: String,
+    #[serde(rename = "zoneName")]
+    zone_name: String,
+    timestamp: u64,
+    formatted: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ConvertedTimeZone {
+    status: String,
+    #[serde(rename = "fromZoneName")]
+    from_zone_name: String,
+    #[serde(rename = "toZoneName")]
+    to_zone_name: String,
+    #[serde(rename = "fromTimestamp")]
+    from_timestamp: u64,
+    #[serde(rename = "toTimestamp")]
+    to_timestamp: u64,
 }
