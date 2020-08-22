@@ -58,7 +58,7 @@ Current bot version: {}
 
 📝 Release Notes:
 🍏 Fix Timezone problem (try /location)
-🍏 Add availability to remove concrete phrase
+🍏 Add availability to remove concrete phrase (try /remove <the exact wording of the phrase to be deleted>)
 
 ➡️ Here's what we plan to do in the near future:
 🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00 AM/PM )
