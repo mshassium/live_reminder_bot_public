@@ -1,6 +1,6 @@
 [package]
 name = "live_reminder_bot_server"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Rail Khamitov <mshassium@gmail.com>"]
 edition = "2018"
 

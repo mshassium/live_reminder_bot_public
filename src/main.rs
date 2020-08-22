@@ -19,10 +19,13 @@ Hello my friend ✌
 This bot help you for enjoy your life and don't forget about the most important ☺️
 You can:
 🍏 Add new importance phrase for your list (/new <long or short phrase>)
+🍏 Remove phrase (/remove <the exact wording of the phrase to be deleted>)
 🍏 Get list your phrase (/list)
 🍏 Get random phrase from list (/random)
+🍏 Update your location to adjust the reminder schedule (/location)
 🍏 Clear list (/clear)
 🍏 Show help message (/help)
+
 ❗️❗️❗️If you want send me any feedback please feel free (@rail_khamitov)
 ";
 
@@ -53,12 +56,12 @@ Hello!!!
 We have some updates for you ☺️
 Current bot version: {}
 
-Release Notes:
-🍏 Fix Timezone problem (Now all reminder send only for +04:00 Timezone)
+📝 Release Notes:
+🍏 Fix Timezone problem (Now all reminder send only for +04:00 Timezone try /location)
+🍏 Add availability to remove concrete phrase
 
-Here's what we plan to do in the near future:
+➡️ Here's what we plan to do in the near future:
 🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00 AM/PM )
-🍎 Add availability to remove concrete phrase
 🍎 Add the ability to edit a specific phrase
 🍎 Add support image/sticker/video for your list
 
@@ -80,8 +83,7 @@ async fn send_reminders(api: &Api, collection: &Collection) -> Result<(), Error>
     for user_id in user_ids {
         let chat = ChatId::new(user_id.parse::<i64>().unwrap());
         println!("[DEBUG]------> For user_id {} send reminder", user_id);
-        let word: String = random_reminder(user_id, collection).unwrap().to_string();
-        api.send(chat.text(word)).await.unwrap();
+        api.send(chat.text(format!("{}",WordsUserFriendly::from_str(random_reminder(user_id, collection).unwrap().as_str().unwrap())))).await;
     }
     Ok(())
 }
@@ -99,17 +101,22 @@ async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> 
                 let chat = message.chat;
                 println!("[DEBUG]------> <{}>: data: {} , entities: {:?}", &message.from.id, data, entities);
                 if data.as_str().starts_with("/new ") {
-                    let clear_word_string = &data.as_str()[4..].trim();//4 because need remove first char '/new'
-                    println!("[DEBUG]------> clear_word_string: {}", clear_word_string);
-                    let new_word_list = save_word(&message.from, clear_word_string, collection).unwrap();
+                    let new_phrase = &data.as_str()[4..].trim();//4 because need remove first char '/new'
+                    println!("[DEBUG]------> clear_word_string: {}", new_phrase);
+                    let new_word_list = save_word(&message.from, new_phrase, collection).unwrap();
                     let new_words_arr = WordsUserFriendly::new(new_word_list.as_document().unwrap().get_array("words").unwrap());
-                    api.send(chat.text(format!("I save your word:) \nYour new word list: {} ", new_words_arr))).await.unwrap();
+                    api.send(chat.text(format!("I save your word ☺️ \nYour new word list 📋: {} ", new_words_arr))).await.unwrap();
+                } else if data.as_str().starts_with("/remove ") {
+                    let phrase_to_remove = data.as_str()[7..].trim();//4 because need remove first char '/new'
+                    println!("[DEBUG]------> delete phrase: {}", phrase_to_remove);
+                    let new_word_list = remove_phrase(&message.from.id.to_string(), &collection, phrase_to_remove).unwrap();
+                    api.send(chat.text(format!("Done 📗 \nYour new word list 📋: {} ", WordsUserFriendly::new(&new_word_list)))).await.unwrap();
                 } else {
                     match data.as_str() {
                         "/list" => {
                             let word_arr = load_words(&message.from.id.to_string(), collection).unwrap();
                             let user_word_arr = WordsUserFriendly::new(&word_arr);
-                            api.send(chat.text(format!("Your list: {}", user_word_arr))).await.unwrap();
+                            api.send(chat.text(format!("{}", user_word_arr))).await.unwrap();
                         }
                         "/help" => {
                             api.send(chat.text(HELP_PLACEHOLDER)).await.unwrap();
@@ -119,17 +126,20 @@ async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> 
                             api.send(chat.text(format!("{}", word))).await.unwrap();
                         }
                         "/new" => {
-                            api.send(chat.text("Please send /new <new Word> command format")).await.unwrap();
+                            api.send(chat.text("❗️ Please send /new <new Word> command format")).await.unwrap();
                         }
                         "/clear" => {
                             let words = WordsUserFriendly::new(&clear_words(&message.from.id.to_string(), collection).unwrap());
-                            api.send(chat.text(format!("Done! \nYour list:  {}", words))).await.unwrap();
+                            api.send(chat.text(format!("Done! \nYour list 📋:  {}", words))).await.unwrap();
                         }
                         "/location" => {
-                            api.send(chat.text("Okay, please send me you location. If you are worried about the security of your address, you can send any other location close to you. We only need this information to determine your time zone")).await.unwrap();
+                            api.send(chat.text("📍 Okay, please send me you location \n⚠️ Only from mobile app. \n\nIf you are worried about the security of your address, you can send any other location close to you. We only need this information to determine your time zone")).await.unwrap();
+                        }
+                        "/reminder_test"=>{
+                            send_reminders(&api,&collection).await;
                         }
                         _ => {
-                            api.send(chat.text(format!("Please send correct command from list: \n{}", HELP_PLACEHOLDER))).await.unwrap();
+                            api.send(chat.text(format!("Please send correct command from list 📋: \n{}", HELP_PLACEHOLDER))).await.unwrap();
                         }
                     }
                 }
@@ -244,6 +254,15 @@ fn clear_words(user_id: &String, collection: &Collection) -> Result<Array, Error
     load_words(user_id, collection)
 }
 
+fn remove_phrase(user_id: &String, collection: &Collection, phrase: &str) -> Result<Array, Error> {
+    println!("[DEBUG]------> remove_phrase {} for : {}", phrase, user_id);
+    collection.find_one_and_update(doc! {"user_id":user_id},
+                                   doc! {"$pull":{"words":phrase}},
+                                   None)
+        .unwrap();
+    load_words(user_id, collection)
+}
+
 fn random_reminder(user_id: String, collection: &Collection) -> Result<Bson, Error> {
     let vec: Vec<Bson> = load_words(&user_id, collection).unwrap();
     if vec.len() > 0 {
@@ -288,16 +307,21 @@ impl WordsUserFriendly {
             words: arr.clone()
         }
     }
+    fn from_str(single_str: &str) -> WordsUserFriendly {
+        WordsUserFriendly {
+            words: vec![bson::Bson::from(single_str)]
+        }
+    }
 }
 
 impl fmt::Display for WordsUserFriendly {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "\n--------------------------\n")?;
-        for v in &self.words {
-            write!(f, "{}", v)?;
-            write!(f, "\n")?;
+        write!(f, "\n🔸🔸🔸🔸🔸🔸🔸🔸🔸\n\n")?;
+        for (pos, v) in self.words.iter().enumerate() {
+            write!(f, "{}) {}", pos + 1, v)?;
+            write!(f, "\n\n")?;
         }
-        write!(f, "--------------------------")
+        write!(f, "🔸🔸🔸🔸🔸🔸🔸🔸🔸")
     }
 }
 
