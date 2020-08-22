@@ -57,7 +57,7 @@ We have some updates for you ☺️
 Current bot version: {}
 
 📝 Release Notes:
-🍏 Fix Timezone problem (Now all reminder send only for +04:00 Timezone try /location)
+🍏 Fix Timezone problem (try /location)
 🍏 Add availability to remove concrete phrase
 
 ➡️ Here's what we plan to do in the near future:
