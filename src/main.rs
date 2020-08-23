@@ -34,12 +34,12 @@ You can:
 #[tokio::main]
 async fn main() -> Result<(), telegram_bot::Error> {
     println!("[DEBUG]------> Application Started");
-    static collection: Collection = connect_to_db();
-    let api: Api = init_api();
-    send_hello_notification(false, &api, &collection).await;
+    let collection: Collection = connect_to_db();
+    // let api: Api = init_api();
+    // send_hello_notification(false, &api, &collection).await;
     reminder_logic(&collection);
     println!("[DEBUG]------> Reminder Logic Initialized");
-    message_logic(&api, &collection).await.unwrap();
+    // message_logic(&api, &collection).await.unwrap();
     println!("[DEBUG]------> Application Stopped");
     Ok(())
 }
@@ -185,7 +185,7 @@ fn init_api() -> Api {
     Api::new(TEST_BOT_TOKEN)
 }
 
-fn reminder_logic(collection: &'static Collection) {
+fn reminder_logic(collection: &Collection) {
     let mut opt = FindOptions::default();
     opt.projection = Some(doc! {"user_id":true});
     let user_ids: Vec<String> = get_user_ids(collection);
@@ -193,10 +193,9 @@ fn reminder_logic(collection: &'static Collection) {
     let mut threads = HashMap::new();
     for user_id in user_ids {
         let new_thread = thread::spawn(|| {
-            let collection: Collection = connect_to_db();
-            println!("TEST:->>>>>{:?}", user_times.get(user_id.as_str()));
+            // let collection: Collection = connect_to_db();
             // let api: Api = init_api();
-            println!("[DEBUG]------> INTO Reminder Thread");
+            // println!("[DEBUG]------> INTO Reminder Thread for user_id: {}", &user_id);
             // let mut rt = tokio::runtime::Runtime::new().unwrap();
             // let mut sched = JobScheduler::new();
             // sched.add(Job::new("0 0 5,17 * * *".parse().unwrap(), move || {
@@ -242,24 +241,25 @@ fn save_word(user: &User, new_word: &str, collection: &Collection) -> Result<Bso
     Ok(bson::to_bson(&res).unwrap())
 }
 
-fn get_user_times<'a>(collection: &'a Collection, user_ids: &'a Vec<String>) -> HashMap<&'a str, Vec<&'a str>> {
+fn get_user_times(collection: & Collection, user_ids: &Vec<String>) -> HashMap<String, Vec<String>> {
     let mut opt = FindOneOptions::default();
     // opt.projection = Some(doc! {"reminder_time":true});
-    let mut result: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut result: HashMap<String, Vec<String>> = HashMap::new();
     for user_id in user_ids {
         collection.find_one(doc! {"user_id":user_id}, None)
             .unwrap()
             .map(|res| {
                 let doc: bson::Document = res;
+                let temp =&Bson::from("");
                 let next_arr = doc.get("reminder_time")
-                    .unwrap()
+                    .unwrap_or(temp)
                     .as_array()
                     .unwrap();
                 let res_arr = next_arr.iter()
                     .map(|item| {
-                        item.as_str().unwrap()
-                    }).collect::<Vec<&str>>();
-                result.insert(user_id.as_str(), res_arr);
+                        item.as_str().unwrap().to_string()
+                    }).collect::<Vec<String>>();
+                result.insert(user_id.to_lowercase(), res_arr);
             });
     }
     result
