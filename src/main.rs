@@ -2,13 +2,14 @@ use futures::{StreamExt};
 use telegram_bot::*;
 use mongodb::{sync::Client, sync::Collection, bson::{doc, Bson, Array}, bson};
 use mongodb::error::Error;
-use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions};
+use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions, FindOneOptions};
 use core::fmt;
 use std::fmt::Formatter;
 use rand::seq::SliceRandom;
 use async_await::{thread};
 use job_scheduler::{JobScheduler, Job};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
@@ -33,12 +34,12 @@ You can:
 #[tokio::main]
 async fn main() -> Result<(), telegram_bot::Error> {
     println!("[DEBUG]------> Application Started");
-    let db_connection: Collection = connect_to_db();
+    static collection: Collection = connect_to_db();
     let api: Api = init_api();
-    send_hello_notification(true, &api, &db_connection).await;
-    reminder_logic();
+    send_hello_notification(false, &api, &collection).await;
+    reminder_logic(&collection);
     println!("[DEBUG]------> Reminder Logic Initialized");
-    message_logic(&api, &db_connection).await.unwrap();
+    message_logic(&api, &collection).await.unwrap();
     println!("[DEBUG]------> Application Stopped");
     Ok(())
 }
@@ -62,7 +63,6 @@ Current bot version: {}
 
 ➡️ Here's what we plan to do in the near future:
 🍎 Add custom time for reminder for each user (Now we send 2 reminders 9:00 AM/PM )
-🍎 Add the ability to edit a specific phrase
 🍎 Add support image/sticker/video for your list
 
             ", env!("CARGO_PKG_VERSION"));
@@ -75,16 +75,12 @@ Current bot version: {}
     }
 }
 
-async fn send_reminders(api: &Api, collection: &Collection) -> Result<(), Error> {
+async fn send_reminders(user_id: String, api: &Api, collection: &Collection) -> Result<(), Error> {
     println!("[DEBUG]------> In to send_reminder function");
-    let mut opt = FindOptions::default();
-    opt.projection = Some(doc! {"user_id":true});
-    let user_ids: Vec<String> = get_user_ids(collection);
-    for user_id in user_ids {
-        let chat = ChatId::new(user_id.parse::<i64>().unwrap());
-        println!("[DEBUG]------> For user_id {} send reminder", user_id);
-        api.send(chat.text(format!("{}",WordsUserFriendly::from_str(random_reminder(user_id, collection).unwrap().as_str().unwrap())))).await;
-    }
+    let chat = ChatId::new(user_id.parse::<i64>().unwrap());
+    println!("[DEBUG]------> For user_id {} send reminder", user_id);
+    api.send(chat.text(format!("{}", WordsUserFriendly::from_str(random_reminder(user_id, collection).unwrap().as_str().unwrap())))).await;
+
     Ok(())
 }
 
@@ -111,6 +107,8 @@ async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> 
                     println!("[DEBUG]------> delete phrase: {}", phrase_to_remove);
                     let new_word_list = remove_phrase(&message.from.id.to_string(), &collection, phrase_to_remove).unwrap();
                     api.send(chat.text(format!("Done 📗 \nYour new word list 📋: {} ", WordsUserFriendly::new(&new_word_list)))).await.unwrap();
+                } else if data.as_str().starts_with("/schedule ") {
+                    schedule_command(data, &message.from.id, api, collection).await;
                 } else {
                     match data.as_str() {
                         "/list" => {
@@ -135,8 +133,9 @@ async fn message_logic(api: &Api, collection: &Collection) -> Result<(), Error> 
                         "/location" => {
                             api.send(chat.text("📍 Okay, please send me you location \n⚠️ Only from mobile app. \n\nIf you are worried about the security of your address, you can send any other location close to you. We only need this information to determine your time zone")).await.unwrap();
                         }
-                        "/reminder_test"=>{
-                            send_reminders(&api,&collection).await;
+                        "/reminder_test" => {
+                            send_reminders(message.from.id
+                                               .to_string(), &api, &collection).await;
                         }
                         _ => {
                             api.send(chat.text(format!("Please send correct command from list 📋: \n{}", HELP_PLACEHOLDER))).await.unwrap();
@@ -183,23 +182,32 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
+    Api::new(TEST_BOT_TOKEN)
 }
 
-fn reminder_logic() {
-    thread::spawn(|| {
-        let collection: Collection = connect_to_db();
-        let api: Api = init_api();
-        println!("[DEBUG]------> INTO Reminder Thread");
-        let mut rt = tokio::runtime::Runtime::new().unwrap();
-        let mut sched = JobScheduler::new();
-        sched.add(Job::new("0 1 5,17 * * *".parse().unwrap(), move || {
-            let _block = rt.block_on(send_reminders(&api, &collection));
-        }));
-        loop {
-            sched.tick();
-        }
-    });
+fn reminder_logic(collection: &'static Collection) {
+    let mut opt = FindOptions::default();
+    opt.projection = Some(doc! {"user_id":true});
+    let user_ids: Vec<String> = get_user_ids(collection);
+    let user_times = get_user_times(&collection, &user_ids);
+    let mut threads = HashMap::new();
+    for user_id in user_ids {
+        let new_thread = thread::spawn(|| {
+            let collection: Collection = connect_to_db();
+            println!("TEST:->>>>>{:?}", user_times.get(user_id.as_str()));
+            // let api: Api = init_api();
+            println!("[DEBUG]------> INTO Reminder Thread");
+            // let mut rt = tokio::runtime::Runtime::new().unwrap();
+            // let mut sched = JobScheduler::new();
+            // sched.add(Job::new("0 0 5,17 * * *".parse().unwrap(), move || {
+            //     let _block = rt.block_on(send_reminders(user_id, &api, &collection));
+            // }));
+            // loop {
+            //     sched.tick();
+            // }
+        });
+        threads.insert(user_id, new_thread);
+    }
 }
 
 fn load_words(user_id: &String, collection: &Collection) -> Result<Array, Error> {
@@ -232,6 +240,29 @@ fn save_word(user: &User, new_word: &str, collection: &Collection) -> Result<Bso
     ).unwrap();
     println!("[DEBUG]------> Save operation result: {:?}", res);
     Ok(bson::to_bson(&res).unwrap())
+}
+
+fn get_user_times<'a>(collection: &'a Collection, user_ids: &'a Vec<String>) -> HashMap<&'a str, Vec<&'a str>> {
+    let mut opt = FindOneOptions::default();
+    // opt.projection = Some(doc! {"reminder_time":true});
+    let mut result: HashMap<&str, Vec<&str>> = HashMap::new();
+    for user_id in user_ids {
+        collection.find_one(doc! {"user_id":user_id}, None)
+            .unwrap()
+            .map(|res| {
+                let doc: bson::Document = res;
+                let next_arr = doc.get("reminder_time")
+                    .unwrap()
+                    .as_array()
+                    .unwrap();
+                let res_arr = next_arr.iter()
+                    .map(|item| {
+                        item.as_str().unwrap()
+                    }).collect::<Vec<&str>>();
+                result.insert(user_id.as_str(), res_arr);
+            });
+    }
+    result
 }
 
 fn save_location(user: &User, timezone: &str, collection: &Collection) -> Result<Bson, Error> {
@@ -295,6 +326,70 @@ fn get_user_ids(collection: &Collection) -> Vec<String> {
         .collect::<Vec<String>>();
     println!("[DEBUG]------> user_ids_ size: {}", user_ids.len());
     user_ids
+}
+
+fn timezone_available(user_id: &UserId, collection: &Collection) -> bool {
+    println!("[DEBUG]------> timezone_available fn for user_id: {}", user_id);
+    let mut opt = FindOptions::default();
+    opt.projection = Some(doc! {"timezone":true});
+    let res = collection.find(doc! {"user_id":user_id.to_string()}, opt)
+        .unwrap()
+        .map(|res| {
+            let doc: bson::Document = res.unwrap();
+            return doc
+                .get("timezone")
+                .unwrap_or(&Bson::from(""))
+                .as_str()
+                .unwrap()
+                .to_string();
+        }).collect::<Vec<String>>();
+    println!("[DEBUG]------> res vec size {} for user_id: {}", res.len(), user_id, );
+    if res.len() > 0 && res[0] != "" {
+        true
+    } else {
+        false
+    }
+}
+
+async fn schedule_command(data: &String, user_id: &UserId, api: &Api, collection: &Collection) {
+    println!("[DEBUG]------> schedule_command");
+    let schedule_times_string = data
+        .as_str()[9..]
+        .trim()
+        .split(",")
+        .map(|time| {
+            time.trim()
+        })
+        .collect::<Vec<&str>>();
+    if timezone_available(user_id, &collection) {
+        match push_new_reminder_time(user_id, &collection, &schedule_times_string) {
+            Ok(res) => {
+                api.send(user_id.text(format!("👍 Time for reminders changed on {:?}", schedule_times_string))).await.unwrap();
+            }
+            Err(e) => {
+                api.send(user_id.text(format!("😔 Sorry, we can't change reminder time."))).await;
+                ()
+            }
+        }
+    } else {
+        api.send(user_id.text("We can't set your schedule time because we do not know your location \nPlease specify location information (try /location)")).await.unwrap();
+    }
+}
+
+fn push_new_reminder_time(user_id: &UserId, collection: &Collection, times: &Vec<&str>) -> Result<bool, Error> {
+    println!("[DEBUG]------> push_new_reminder_time for user: {}", user_id);
+    let mut options = FindOneAndUpdateOptions::default();
+    options.upsert = Some(true);
+    options.return_document = Some(ReturnDocument::After);
+    match collection.find_one_and_update(doc! {"user_id":user_id.to_string()},
+                                         doc! {"$push":{"reminder_time":{"$each":times}}},
+                                         options) {
+        Ok(document) => Ok(true),
+        Err(e) => {
+            println!("[DEBUG]------> Error {:?}", e);
+            Ok(false)
+        }
+    }
 }
 
 struct WordsUserFriendly {
