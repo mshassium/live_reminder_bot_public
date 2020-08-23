@@ -849,9 +849,10 @@ checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "live_reminder_bot_server"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "async-await",
+ "chrono",
  "cpu-time",
  "futures 0.3.5",
  "job_scheduler",
@@ -860,7 +861,9 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "stoppable_thread",
  "telegram-bot",
+ "thread-control",
  "tokio",
  "tzdata",
 ]
@@ -1914,6 +1917,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "stoppable_thread"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6700c1ed393aa9c1fff950032a64a4856436dadee820641ce1b914cab65019f"
+
+[[package]]
 name = "stringprep"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,6 +2047,12 @@ dependencies = [
  "quote 1.0.7",
  "syn 1.0.38",
 ]
+
+[[package]]
+name = "thread-control"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e002431352cce4e76fd6fe77d5bf1b75ff790ea790602f0579ce58641c2eea"
 
 [[package]]
 name = "thread-id"
