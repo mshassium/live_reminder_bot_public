@@ -426,7 +426,7 @@ async fn schedule_command(data: &String,
         .as_str()[9..]
         .trim()
         .split(",")
-        .filter(|t| t.parse::<i32>().unwrap() > 0 && t.parse::<i32>().unwrap() < 23)
+        .filter(|t| t.trim().parse::<i32>().unwrap() > 0 && t.trim().parse::<i32>().unwrap() < 23)
         .map(|time| {
             time.trim().to_string()
         })
