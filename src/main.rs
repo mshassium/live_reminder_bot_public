@@ -2,20 +2,15 @@ use futures::{StreamExt};
 use telegram_bot::*;
 use mongodb::{sync::Client, sync::Collection, bson::{doc, Bson, Array}, bson};
 use mongodb::error::Error;
-use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions, FindOneOptions};
+use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument, FindOptions};
 use core::fmt;
 use std::fmt::Formatter;
 use rand::seq::SliceRandom;
-use async_await::{thread};
 use job_scheduler::{JobScheduler, Job};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
+use std::sync::{Arc};
 use stoppable_thread::StoppableHandle;
-use std::borrow::{Borrow, BorrowMut};
-use std::time::SystemTime;
-use serde::export::TryFrom;
 
 const DEBUG_LOG: &str = "[DEBUG]------>";
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
@@ -25,17 +20,16 @@ const HELP_PLACEHOLDER: &str = "\
 Hello my friend ✌
 This bot helps you to enjoy your life and remember the most important things ☺️
 You can:
-🍏 Add new importance phrase for your list (/new <long or short phrase>)
-🍏 Remove phrase (/remove <the exact phrase to be deleted>)
-🍏 Get list your phrase (/list)
-🍏 Get random phrase from list (/random)
-🍏 Update your location to adjust the reminder schedule (/location)
-🍏 Schedule concrete time (/schedule <time list>)
-    |
-    |
-    - - -> Example: /schedule 9,12,15,21,23
-🍏 Clear list (/clear)
-🍏 Show help message (/help)
+1️⃣  Add new importance phrase for your list (/new <long or short phrase>)
+2️⃣  Remove phrase (/remove <the exact phrase to be deleted>)
+3️⃣  Get list your phrase (/list)
+4️⃣  Get random phrase from list (/random)
+5️⃣  Update your location to adjust the reminder schedule (/location)
+6️⃣  Schedule concrete time (/schedule <time list>)
+     |
+      --> Example: /schedule 9,12,15,21,23
+7️⃣ Clear list (/clear)
+8️⃣ Show help message (/help)
 
 ❗️❗️❗️Feel free to send me any feedback please (@rail_khamitov)
 ";
@@ -166,7 +160,7 @@ async fn message_logic(api: &Api,
             } else if
             let MessageKind::Location { data } = message.kind {
                 println!("[DEBUG]------> user {} send location lat: {}, long: {} ", message.from.id, data.latitude, data.longitude);
-                let get_timezone_url: String = format!("http://api.timezonedb.com/v2.1/get-time-zone?key=PRG4062PTQJU&format=json&by=position&lat={}&lng={}", data.latitude, data.longitude);
+                let get_timezone_url: String = format!("http://api.timezonedb.com/v2.1/get-time-zone?key={}&format=json&by=position&lat={}&lng={}",TZ_API_KEY, data.latitude, data.longitude);
                 let get_timezone_res = reqwest::get(&get_timezone_url)
                     .await.unwrap()
                     .text()
@@ -192,7 +186,7 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
+    Api::new(TEST_BOT_TOKEN)
 }
 
 fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()>> {
@@ -204,7 +198,7 @@ fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()
     for user_id in user_ids {
         if user_times_arc.contains_key(&user_id) {
             let user_time = user_times_arc.get(&user_id).unwrap();
-            let new_thread = schedule_reminder_for_concrete_user(&user_id, user_time, &mut threads, &collection);
+            let new_thread = schedule_reminder_for_concrete_user(&user_id, user_time, &mut threads);
             threads.insert(user_id, new_thread);
         }
     }
@@ -214,10 +208,9 @@ fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()
 
 fn schedule_reminder_for_concrete_user(user_id: &String,
                                        user_time: &Vec<String>,
-                                       threads: &mut HashMap<String, StoppableHandle<()>>,
-                                       collection: &Collection) -> StoppableHandle<()> {
+                                       threads: &mut HashMap<String, StoppableHandle<()>>) -> StoppableHandle<()> {
     let user_id_temp = String::from(user_id);
-    println!("{:?}", user_time);
+    println!("{} schedule_reminder_for_concrete_user: {}, time: {:?}", DEBUG_LOG, user_id, user_time);
     let concrete_times = Arc::new(user_time.clone()).clone();
     if threads.contains_key(&user_id_temp) {
         println!("{} stop thread for user_id: {}", DEBUG_LOG, &user_id_temp);
@@ -433,18 +426,15 @@ async fn schedule_command(data: &String,
         .collect::<Vec<String>>();
     println!("[DEBUG]------> schedule_times_string: {:?}", schedule_times_string);
     if timezone_available(user_id, &collection) {
-        if let res = push_new_reminder_time(user_id, &collection, &schedule_times_string).await.unwrap() {
-            if res {
-                let res_thread = schedule_reminder_for_concrete_user(&user_id.to_string(),
-                                                                     &schedule_times_string,
-                                                                     threads,
-                                                                     &collection);
-                threads.insert(user_id.to_string(), res_thread);
-                api.send(user_id.text(format!("👍 Time for reminders changed on {:?}", schedule_times_string))).await.unwrap();
-            } else {
-                api.send(user_id.text(format!("😔 Sorry, we can't change reminder time."))).await.unwrap();
-                ()
-            }
+        if push_new_reminder_time(user_id, &collection, &schedule_times_string).await.unwrap() {
+            let res_thread = schedule_reminder_for_concrete_user(&user_id.to_string(),
+                                                                 &schedule_times_string,
+                                                                 threads);
+            threads.insert(user_id.to_string(), res_thread);
+            api.send(user_id.text(format!("👍 Time for reminders changed on {:?}", schedule_times_string))).await.unwrap();
+        } else {
+            api.send(user_id.text(format!("😔 Sorry, we can't change reminder time."))).await.unwrap();
+            ()
         }
     } else {
         api.send(user_id.text("We can't set your schedule time because we do not know your location \nPlease specify location information (try /location)")).await.unwrap();
@@ -463,7 +453,7 @@ async fn push_new_reminder_time(user_id: &UserId, collection: &Collection, times
     match collection.find_one_and_update(doc! {"user_id":user_id.to_string()},
                                          doc! {"$push":{"reminder_time":{"$each":converted_time}}},
                                          options) {
-        Ok(document) => Ok(true),
+        Ok(_document) => Ok(true),
         Err(e) => {
             println!("[DEBUG]------> Error {:?}", e);
             Ok(false)
