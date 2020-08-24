@@ -46,7 +46,7 @@ async fn main() -> Result<(), telegram_bot::Error> {
     println!("[DEBUG]------> Application Started");
     let collection: Collection = connect_to_db();
     let api: Api = init_api();
-    send_hello_notification(true, &api, &collection).await;
+    send_hello_notification(false, &api, &collection).await;
     let mut threads: HashMap<String, StoppableHandle<()>> = reminder_logic(&collection);
     println!("[DEBUG]------> Reminder Logic Initialized");
     message_logic(&api, &collection, &mut threads).await.unwrap();
@@ -111,15 +111,23 @@ async fn message_logic(api: &Api,
                 println!("[DEBUG]------> <{}>: data: {} , entities: {:?}", &message.from.id, data, entities);
                 if data.as_str().starts_with("/new ") {
                     let new_phrase = &data.as_str()[4..].trim();//4 because need remove first char '/new'
-                    println!("[DEBUG]------> clear_word_string: {}", new_phrase);
-                    let new_word_list = save_word(&message.from, new_phrase, collection).unwrap();
-                    let new_words_arr = WordsUserFriendly::new(new_word_list.as_document().unwrap().get_array("words").unwrap());
-                    api.send(chat.text(format!("I save your word ☺️ \nYour new word list 📋: {} ", new_words_arr))).await.unwrap();
+                    if new_phrase.len() > 300 {
+                        api.send(chat.text(format!("☺️ Your message is too long. Max length = 300 characters"))).await.unwrap();
+                    } else {
+                        println!("[DEBUG]------> clear_word_string: {}", new_phrase);
+                        let new_word_list = save_word(&message.from, new_phrase, collection).unwrap();
+                        let new_words_arr = WordsUserFriendly::new(new_word_list.as_document().unwrap().get_array("words").unwrap());
+                        api.send(chat.text(format!("I save your word ☺️ \nYour new word list 📋: {} ", new_words_arr))).await.unwrap();
+                    }
                 } else if data.as_str().starts_with("/remove ") {
                     let phrase_to_remove = data.as_str()[7..].trim();//4 because need remove first char '/new'
-                    println!("[DEBUG]------> delete phrase: {}", phrase_to_remove);
-                    let new_word_list = remove_phrase(&message.from.id.to_string(), &collection, phrase_to_remove).unwrap();
-                    api.send(chat.text(format!("Done 📗 \nYour new word list 📋: {} ", WordsUserFriendly::new(&new_word_list)))).await.unwrap();
+                    if phrase_to_remove.len() > 300 {
+                        api.send(chat.text(format!("☺️ You do not have this phrase "))).await.unwrap();
+                    } else {
+                        println!("[DEBUG]------> delete phrase: {}", phrase_to_remove);
+                        let new_word_list = remove_phrase(&message.from.id.to_string(), &collection, phrase_to_remove).unwrap();
+                        api.send(chat.text(format!("Done 📗 \nYour new word list 📋: {} ", WordsUserFriendly::new(&new_word_list)))).await.unwrap();
+                    }
                 } else if data.as_str().starts_with("/schedule ") {
                     schedule_command(data, &message.from.id, api, collection, reminder_threads).await;
                 } else {
@@ -184,7 +192,7 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
+    Api::new(TEST_BOT_TOKEN)
 }
 
 fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()>> {
@@ -418,10 +426,12 @@ async fn schedule_command(data: &String,
         .as_str()[9..]
         .trim()
         .split(",")
+        .filter(|t| t.parse::<i32>().unwrap() > 0 && t.parse::<i32>().unwrap() < 23)
         .map(|time| {
             time.trim().to_string()
         })
         .collect::<Vec<String>>();
+    println!("[DEBUG]------> schedule_times_string: {:?}", schedule_times_string);
     if timezone_available(user_id, &collection) {
         if let res = push_new_reminder_time(user_id, &collection, &schedule_times_string).await.unwrap() {
             if res {
