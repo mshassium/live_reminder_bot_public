@@ -13,10 +13,9 @@ use stoppable_thread::StoppableHandle;
 use model::UserPhrase;
 use crate::model::{ConvertedTimeZone, TimeZoneRawData};
 
-const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
-const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
-const DB_CREDENTIAL: &str = "mshassium:6308280156mng";
-const TZ_API_KEY: &str = "PRG4062PTQJU";
+const RELEASE_BOT_TOKEN: &str = "";
+const DB_CREDENTIAL: &str = "";
+const TZ_API_KEY: &str = "";
 const MAX_MESSAGE_LEN: usize = 300;
 
 //[TODO] refactoring long message to read file
