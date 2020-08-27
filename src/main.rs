@@ -13,7 +13,7 @@ use std::sync::{Arc};
 use stoppable_thread::StoppableHandle;
 use reqwest::header::TE;
 
-const DEBUG_LOG: &str = "[DEBUG]------>";
+const DEBUG_LOG: &str = "";
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
 const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
 const DB_CREDENTIAL: &str = "mshassium:6308280156mng";
@@ -162,7 +162,7 @@ async fn message_logic(api: &Api,
             } else if
             let MessageKind::Location { data } = message.kind {
                 println!("[DEBUG]------> user {} send location lat: {}, long: {} ", message.from.id, data.latitude, data.longitude);
-                let get_timezone_url: String = format!("http://api.timezonedb.com/v2.1/get-time-zone?key={}&format=json&by=position&lat={}&lng={}",TZ_API_KEY, data.latitude, data.longitude);
+                let get_timezone_url: String = format!("http://api.timezonedb.com/v2.1/get-time-zone?key={}&format=json&by=position&lat={}&lng={}", TZ_API_KEY, data.latitude, data.longitude);
                 let get_timezone_res = reqwest::get(&get_timezone_url)
                     .await.unwrap()
                     .text()
@@ -204,7 +204,7 @@ fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()
             threads.insert(user_id, new_thread);
         }
     }
-    println!("{} Reminder logic result {:?}", DEBUG_LOG, threads.len());
+    println!("[DEBUG]------> Reminder logic result {:?}", threads.len());
     threads
 }
 
@@ -212,19 +212,19 @@ fn schedule_reminder_for_concrete_user(user_id: &String,
                                        user_time: &Vec<String>,
                                        threads: &mut HashMap<String, StoppableHandle<()>>) -> StoppableHandle<()> {
     let user_id_temp = String::from(user_id);
-    println!("{} schedule_reminder_for_concrete_user: {}, time: {:?}", DEBUG_LOG, user_id, user_time);
+    println!("[DEBUG]------> schedule_reminder_for_concrete_user: {}, time: {:?}", user_id, user_time);
     let concrete_times = Arc::new(user_time.clone()).clone();
     if threads.contains_key(&user_id_temp) {
-        println!("{} stop thread for user_id: {}", DEBUG_LOG, &user_id_temp);
+        println!("[DEBUG]------> stop thread for user_id: {}", &user_id_temp);
     }
     stoppable_thread::spawn(move |_| {
         let collection: Collection = connect_to_db();
         let api: Api = init_api();
         println!("[DEBUG]------> INTO Reminder Thread for user_id: {} and times: {:?}", user_id_temp, concrete_times);
         let result_hours = concrete_times.join(",");
-        println!("{} Joined time: {}", DEBUG_LOG, result_hours);
+        println!("[DEBUG]------> Joined time: {}", result_hours);
         let result_schedule_config = format!("0 0 {} * * *", result_hours);
-        println!("{} Result schedule config: {}", DEBUG_LOG, result_hours);
+        println!("[DEBUG]------> Result schedule config: {}", result_hours);
         let mut rt = tokio::runtime::Runtime::new().unwrap();
         let mut sched = JobScheduler::new();
         sched.add(Job::new(result_schedule_config.parse().unwrap(), move || {
@@ -293,7 +293,7 @@ fn get_user_times(collection: &Collection, user_ids: &Vec<String>) -> HashMap<St
 }
 
 async fn convert_timezone(user_id: &String, raw_times: &Vec<String>, collection: &Collection) -> Result<Vec<String>, Error> {
-    println!("{} convert_timezone fn for user_id: {}", DEBUG_LOG, user_id);
+    println!("[DEBUG]------> convert_timezone fn for user_id: {}", user_id);
     let user_timezone = String::from(collection.find_one(doc! {"user_id":user_id}, None)
         .unwrap()
         .map(|res| {
