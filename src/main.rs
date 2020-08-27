@@ -11,10 +11,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc};
 use stoppable_thread::StoppableHandle;
+use reqwest::header::TE;
 
 const DEBUG_LOG: &str = "[DEBUG]------>";
 const RELEASE_BOT_TOKEN: &str = "1218027891:AAE40Ml4He8_2gHqTOCtNOB3k5Dj2g1NgqQ";
 const TEST_BOT_TOKEN: &str = "1328882225:AAEzOZOeZ6w1uO3o7ugBybSu7FsryWYt-U0";
+const DB_CREDENTIAL: &str = "mshassium:6308280156mng";
 const TZ_API_KEY: &str = "PRG4062PTQJU";
 const HELP_PLACEHOLDER: &str = "\
 Hello my friend ✌
@@ -178,7 +180,7 @@ async fn message_logic(api: &Api,
 
 fn connect_to_db() -> Collection {
     println!("[DEBUG]------> DB Connection Start");
-    let client = Client::with_uri_str("mongodb+srv://mshassium:6308280156mng@cluster0.tndjw.mongodb.net").unwrap();
+    let client = Client::with_uri_str(format!("mongodb+srv://{}@cluster0.tndjw.mongodb.net", DB_CREDENTIAL).as_str()).unwrap();
     let db = client.database("live_reminder");
     let collection = db.collection("user_words");
     println!("[DEBUG]------> DB Connection DONE");
@@ -186,7 +188,7 @@ fn connect_to_db() -> Collection {
 }
 
 fn init_api() -> Api {
-    Api::new(RELEASE_BOT_TOKEN)
+    Api::new(TEST_BOT_TOKEN)
 }
 
 fn reminder_logic(collection: &Collection) -> HashMap<String, StoppableHandle<()>> {
